@@ -66,8 +66,10 @@ EIGEN_ALWAYS_INLINE Eigen::Vector3f getInterpolatedElement33(const Eigen::Vector
     float dxdy = dx * dy;
     const Eigen::Vector3f* bp = mat + ix + iy * width;
 
-    return dxdy * *(const Eigen::Vector3f*)(bp + 1 + width) + (dy - dxdy) * *(const Eigen::Vector3f*)(bp + width) +
-           (dx - dxdy) * *(const Eigen::Vector3f*)(bp + 1) + (1 - dx - dy + dxdy) * *(const Eigen::Vector3f*)(bp);
+    return dxdy * *(const Eigen::Vector3f*)(bp + 1 + width) +
+           (dy - dxdy) * *(const Eigen::Vector3f*)(bp + width) +
+           (dx - dxdy) * *(const Eigen::Vector3f*)(bp + 1) +
+           (1 - dx - dy + dxdy) * *(const Eigen::Vector3f*)(bp);
 }
 
 EIGEN_ALWAYS_INLINE Eigen::Vector3f getInterpolatedElement33OverAnd(const Eigen::Vector3f* const mat, const bool* overMat, const float x, const float y,

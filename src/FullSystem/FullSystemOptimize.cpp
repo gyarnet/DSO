@@ -47,7 +47,7 @@ void FullSystem::linearizeAll_Reductor(bool fixLinearization, std::vector<PointF
 
         if (fixLinearization)  // 固定线性化（优化后执行）
         {
-            r->applyRes(true);  // 把值给efResidual
+            r->applyRes();  // 把值给efResidual
 
             if (r->efResidual->isActive())  // 残差是in的
             {
@@ -73,7 +73,7 @@ void FullSystem::linearizeAll_Reductor(bool fixLinearization, std::vector<PointF
 
 //@ 把线性化结果传给能量函数efResidual, copyJacobians [true: 更新jacobian] [false: 不更新]
 void FullSystem::applyRes_Reductor(bool copyJacobians, int min, int max, Vec10* stats, int tid) {
-    for (int k = min; k < max; k++) activeResiduals[k]->applyRes(true);
+    for (int k = min; k < max; k++) activeResiduals[k]->applyRes();
 }
 
 //@ 计算当前最新帧的能量阈值, 太玄学了
@@ -337,7 +337,7 @@ float FullSystem::optimize(int mnumOptIts) {
     activeResiduals.clear();
     int numPoints = 0;
     int numLRes = 0;
-    for (FrameHessian* fh : frameHessians)
+    for (FrameHessian* fh : frameHessians) {
         for (PointHessian* ph : fh->pointHessians) {
             for (PointFrameResidual* r : ph->residuals) {
                 if (!r->efResidual->isLinearized)  // 没有求线性误差
@@ -349,8 +349,10 @@ float FullSystem::optimize(int mnumOptIts) {
             }
             numPoints++;
         }
+    }
 
-    if (!setting_debugout_runquiet) printf("OPTIMIZE %d pts, %d active res, %d lin res!\n", ef->nPoints, (int)activeResiduals.size(), numLRes);
+    if (!setting_debugout_runquiet)
+        printf("OPTIMIZE %d pts, %d active res, %d lin res!\n", ef->nPoints, (int)activeResiduals.size(), numLRes);
 
     //[ ***step 2*** ] 线性化activeResiduals的残差, 计算边缘化的能量值 (然而这里都设成0了)
     //* 线性化, 参数: [true是进行固定线性化, 并去掉不好的残差] [false不进行固定线性化]
@@ -386,15 +388,6 @@ float FullSystem::optimize(int mnumOptIts) {
         double incDirChange = (1e-20 + previousX.dot(ef->lastX)) / (1e-20 + previousX.norm() * ef->lastX.norm());  // 两次下降方向的点积（dot/模长）
         previousX = ef->lastX;
 
-        //? TUM自己的解法???
-        if (std::isfinite(incDirChange) && (setting_solverMode & SOLVER_STEPMOMENTUM)) {
-            float newStepsize = exp(incDirChange * 1.4);
-            if (incDirChange < 0 && stepsize > 1) stepsize = 1;
-
-            stepsize = sqrtf(sqrtf(newStepsize * stepsize * stepsize * stepsize));
-            if (stepsize > 2) stepsize = 2;
-            if (stepsize < 0.25) stepsize = 0.25;
-        }
         //[ ***step 3.3*** ] 更新状态
         //* 更新变量, 判断是否停止
         bool canbreak = doStepFromBackup(stepsize, stepsize, stepsize, stepsize, stepsize);

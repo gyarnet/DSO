@@ -58,9 +58,12 @@ class AccumulatedSCHessianSSE {
     inline void setZero(int n, int min = 0, int max = 1, Vec10* stats = 0, int tid = 0) {
         if (n != nframes[tid])  // 如果帧数有变化
         {
-            if (accE[tid] != 0) delete[] accE[tid];
-            if (accEB[tid] != 0) delete[] accEB[tid];
-            if (accD[tid] != 0) delete[] accD[tid];
+            if (accE[tid] != 0)
+                delete[] accE[tid];
+            if (accEB[tid] != 0)
+                delete[] accEB[tid];
+            if (accD[tid] != 0)
+                delete[] accD[tid];
             // 这三数组
             accE[tid] = new AccumulatorXX<8, CPARS>[n * n];
             accEB[tid] = new AccumulatorX<8>[n * n];
@@ -117,11 +120,11 @@ class AccumulatedSCHessianSSE {
         }
     }
 
-    AccumulatorXX<8, CPARS>* accE[NUM_THREADS];  //!< 位姿和内参关于逆深度的 Schur
-    AccumulatorX<8>* accEB[NUM_THREADS];         //!< 位姿光度关于逆深度的 b*Schur
     AccumulatorXX<8, 8>* accD[NUM_THREADS];      //!< 两位姿光度关于逆深度的 Schur
-
+    AccumulatorXX<8, CPARS>* accE[NUM_THREADS];  //!< 位姿和内参关于逆深度的 Schur
     AccumulatorXX<CPARS, CPARS> accHcc[NUM_THREADS];  //!< 内参关于逆深度的 Schur
+
+    AccumulatorX<8>* accEB[NUM_THREADS];         //!< 位姿光度关于逆深度的 b*Schur
     AccumulatorX<CPARS> accbc[NUM_THREADS];           //!< 内参关于逆深度的 b*Schur
     int nframes[NUM_THREADS];
 

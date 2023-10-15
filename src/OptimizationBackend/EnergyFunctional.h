@@ -135,7 +135,6 @@ class EnergyFunctional {
 
     AccumulatedTopHessianSSE* accSSE_top_L;  //!<
     AccumulatedTopHessianSSE* accSSE_top_A;  //!<
-
     AccumulatedSCHessianSSE* accSSE_bot;
 
     std::vector<EFPoint*> allPoints;

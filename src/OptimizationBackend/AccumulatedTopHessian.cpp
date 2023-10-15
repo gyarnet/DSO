@@ -153,7 +153,7 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX& H, VecX& b, EnergyFunctional 
     H = MatXX::Zero(nframes[tid] * 8 + CPARS, nframes[tid] * 8 + CPARS);
     b = VecX::Zero(nframes[tid] * 8 + CPARS);
 
-    for (int h = 0; h < nframes[tid]; h++)
+    for (int h = 0; h < nframes[tid]; h++) {
         for (int t = 0; t < nframes[tid]; t++) {
             int hIdx = CPARS + h * 8;
             int tIdx = CPARS + t * 8;
@@ -165,23 +165,17 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX& H, VecX& b, EnergyFunctional 
             MatPCPC accH = acc[tid][aidx].H.cast<double>();
 
             H.block<8, 8>(hIdx, hIdx).noalias() += EF->adHost[aidx] * accH.block<8, 8>(CPARS, CPARS) * EF->adHost[aidx].transpose();
-
             H.block<8, 8>(tIdx, tIdx).noalias() += EF->adTarget[aidx] * accH.block<8, 8>(CPARS, CPARS) * EF->adTarget[aidx].transpose();
-
             H.block<8, 8>(hIdx, tIdx).noalias() += EF->adHost[aidx] * accH.block<8, 8>(CPARS, CPARS) * EF->adTarget[aidx].transpose();
-
             H.block<8, CPARS>(hIdx, 0).noalias() += EF->adHost[aidx] * accH.block<8, CPARS>(CPARS, 0);
-
             H.block<8, CPARS>(tIdx, 0).noalias() += EF->adTarget[aidx] * accH.block<8, CPARS>(CPARS, 0);
-
             H.topLeftCorner<CPARS, CPARS>().noalias() += accH.block<CPARS, CPARS>(0, 0);
 
             b.segment<8>(hIdx).noalias() += EF->adHost[aidx] * accH.block<8, 1>(CPARS, 8 + CPARS);
-
             b.segment<8>(tIdx).noalias() += EF->adTarget[aidx] * accH.block<8, 1>(CPARS, 8 + CPARS);
-
             b.head<CPARS>().noalias() += accH.block<CPARS, 1>(0, 8 + CPARS);
         }
+    }
 
     // ----- new: copy transposed parts.
     for (int h = 0; h < nframes[tid]; h++) {
@@ -232,26 +226,20 @@ void AccumulatedTopHessianSSE::stitchDoubleInternal(MatXX* H, VecX* b, EnergyFun
 
         for (int tid2 = 0; tid2 < toAggregate; tid2++) {
             acc[tid2][aidx].finish();
-            if (acc[tid2][aidx].num == 0) continue;
+            if (acc[tid2][aidx].num == 0)
+                continue;
             accH += acc[tid2][aidx].H.cast<double>();  // 不同线程之间的加起来
         }
         //* 相对的量通过adj变成绝对的量, 并累加到 H, b 中
         H[tid].block<8, 8>(hIdx, hIdx).noalias() += EF->adHost[aidx] * accH.block<8, 8>(CPARS, CPARS) * EF->adHost[aidx].transpose();
-
         H[tid].block<8, 8>(tIdx, tIdx).noalias() += EF->adTarget[aidx] * accH.block<8, 8>(CPARS, CPARS) * EF->adTarget[aidx].transpose();
-
         H[tid].block<8, 8>(hIdx, tIdx).noalias() += EF->adHost[aidx] * accH.block<8, 8>(CPARS, CPARS) * EF->adTarget[aidx].transpose();
-
         H[tid].block<8, CPARS>(hIdx, 0).noalias() += EF->adHost[aidx] * accH.block<8, CPARS>(CPARS, 0);
-
         H[tid].block<8, CPARS>(tIdx, 0).noalias() += EF->adTarget[aidx] * accH.block<8, CPARS>(CPARS, 0);
-
         H[tid].topLeftCorner<CPARS, CPARS>().noalias() += accH.block<CPARS, CPARS>(0, 0);
 
         b[tid].segment<8>(hIdx).noalias() += EF->adHost[aidx] * accH.block<8, 1>(CPARS, CPARS + 8);
-
         b[tid].segment<8>(tIdx).noalias() += EF->adTarget[aidx] * accH.block<8, 1>(CPARS, CPARS + 8);
-
         b[tid].head<CPARS>().noalias() += accH.block<CPARS, 1>(0, CPARS + 8);  //! 残差 * 内参
     }
 

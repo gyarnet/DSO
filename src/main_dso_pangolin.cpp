@@ -294,7 +294,8 @@ void parseArgument(char* arg) {
 
 int main(int argc, char** argv) {
     // setlocale(LC_ALL, "");
-    for (int i = 1; i < argc; i++) parseArgument(argv[i]);
+    for (int i = 1; i < argc; i++)
+        parseArgument(argv[i]);
 
     // hook crtl+C.
     boost::thread exThread = boost::thread(exitThread);

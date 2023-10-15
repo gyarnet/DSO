@@ -83,7 +83,7 @@ class PointFrameResidual {
 
         setState(ResState::IN);
     };
-    void applyRes(bool copyJacobians);
+    void applyRes();
 
     void debugPlot();
 

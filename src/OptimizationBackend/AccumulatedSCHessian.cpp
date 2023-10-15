@@ -119,6 +119,7 @@ void AccumulatedSCHessianSSE::stitchDoubleInternal(MatXX* H, VecX* b, EnergyFunc
         b[tid].segment<8>(iIdx) += EF->adHost[ijIdx] * bp;
         b[tid].segment<8>(jIdx) += EF->adTarget[ijIdx] * bp;
 
+
         for (int k = 0; k < nf; k++) {
             int kIdx = CPARS + k * 8;
             int ijkIdx = ijIdx + k * nframes2;
@@ -128,7 +129,8 @@ void AccumulatedSCHessianSSE::stitchDoubleInternal(MatXX* H, VecX* b, EnergyFunc
 
             for (int tid2 = 0; tid2 < toAggregate; tid2++) {
                 accD[tid2][ijkIdx].finish();
-                if (accD[tid2][ijkIdx].num == 0) continue;
+                if (accD[tid2][ijkIdx].num == 0)
+                    continue;
                 accDM += accD[tid2][ijkIdx].A1m.cast<double>();
             }
             //! Hff部分Schur
@@ -165,7 +167,7 @@ void AccumulatedSCHessianSSE::stitchDouble(MatXX& H, VecX& b, EnergyFunctional c
     H = MatXX::Zero(nf * 8 + CPARS, nf * 8 + CPARS);
     b = VecX::Zero(nf * 8 + CPARS);
 
-    for (int i = 0; i < nf; i++)
+    for (int i = 0; i < nf; i++) {
         for (int j = 0; j < nf; j++) {
             int iIdx = CPARS + i * 8;
             int jIdx = CPARS + j * 8;
@@ -201,6 +203,7 @@ void AccumulatedSCHessianSSE::stitchDouble(MatXX& H, VecX& b, EnergyFunctional c
                 H.block<8, 8>(iIdx, kIdx) += EF->adHost[ijIdx] * accDM * EF->adTarget[ikIdx].transpose();
             }
         }
+    }
 
     accHcc[tid].finish();
     accbc[tid].finish();

@@ -188,7 +188,9 @@ void EnergyFunctional::accumulateAF_MT(MatXX& H, VecX& b, bool MT) {
     } else {
         accSSE_top_A->setZero(nFrames);
         for (EFFrame* f : frames)
-            for (EFPoint* p : f->points) accSSE_top_A->addPoint<0>(p, this);  //! mode 0 增加EF点
+            for (EFPoint* p : f->points){
+                accSSE_top_A->addPoint<0>(p, this);  //! mode 0 增加EF点
+            }
         // accSSE_top_A->stitchDoubleMT(red,H,b,this,false,false); // 不加先验, 得到H, b
         accSSE_top_A->stitchDoubleMT(red, H, b, this, true, false);  // 加先验, 得到H, b
         resInA = accSSE_top_A->nres[0];                              // 所有残差计数
@@ -206,7 +208,8 @@ void EnergyFunctional::accumulateLF_MT(MatXX& H, VecX& b, bool MT) {
     } else {
         accSSE_top_L->setZero(nFrames);
         for (EFFrame* f : frames)
-            for (EFPoint* p : f->points) accSSE_top_L->addPoint<1>(p, this);  //! mode 1
+            for (EFPoint* p : f->points)
+                accSSE_top_L->addPoint<1>(p, this);  //! mode 1
         accSSE_top_L->stitchDoubleMT(red, H, b, this, true, false);
         resInL = accSSE_top_L->nres[0];
     }
@@ -220,8 +223,11 @@ void EnergyFunctional::accumulateSCF_MT(MatXX& H, VecX& b, bool MT) {
         accSSE_bot->stitchDoubleMT(red, H, b, this, true);
     } else {
         accSSE_bot->setZero(nFrames);
-        for (EFFrame* f : frames)
-            for (EFPoint* p : f->points) accSSE_bot->addPoint(p, true);
+        for (EFFrame* f : frames){
+            for (EFPoint* p : f->points){
+                accSSE_bot->addPoint(p, true);
+            }
+        }
         accSSE_bot->stitchDoubleMT(red, H, b, this, false);
     }
 }
@@ -556,7 +562,7 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh) {
     delete fh;
 }
 
-//@ 边缘化掉一个点
+//@ 边缘化掉一个点，得到Hm,bm
 void EnergyFunctional::marginalizePointsF() {
     assert(EFDeltaValid);
     assert(EFAdjointsValid);
@@ -755,7 +761,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
     //* 边缘化fix的残差, 有边缘化对的, 使用的res_toZeroF减去线性化部分, 加上先验, 没有逆深度的部分
     // bug: 这里根本就没有点参与了, 只有先验信息, 因为边缘化的和删除的点都不在了
-    //! 这里唯一的作用就是 把 p相关的置零
+    //! 这里唯一的作用就是 把 p相关的置零,算出来的没有用
     accumulateLF_MT(HL_top, bL_top, multiThreading);  // 计算的是之前计算过得
                                                       // p->Hdd_accLF = 0;
                                                       // p->bd_accLF = 0;
@@ -827,7 +833,8 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
         //* 而这个就是阻尼加在了整个Hessian上
         //? 为什么呢, 是因为减去了零空间么  ??
-        for (int i = 0; i < 8 * nFrames + CPARS; i++) HFinal_top(i, i) *= (1 + lambda);
+        for (int i = 0; i < 8 * nFrames + CPARS; i++)
+            HFinal_top(i, i) *= (1 + lambda);
         HFinal_top -= H_sc * (1.0f / (1 + lambda));  // 因为Schur里面有个对角线的逆, 所以是倒数
     }
 

@@ -101,6 +101,7 @@ double PointFrameResidual::linearize(CalibHessian* HCalib) {
         float Ku, Kv;
         Vec3f KliP;
 
+        // 这里使用线性化点
         if (!projectPoint(point->u, point->v, point->idepth_zero_scaled, 0, 0, HCalib, PRE_RTll_0, PRE_tTll_0, drescale, u, v, Ku, Kv, KliP, new_idepth)) {
             state_NewState = ResState::OOB;
             return state_energy;
@@ -198,10 +199,6 @@ double PointFrameResidual::linearize(CalibHessian* HCalib) {
         Vec3f hitColor = (getInterpolatedElement33(dIl, Ku, Kv, wG[0]));
         float residual = hitColor[0] - (float)(affLL[0] * color[idx] + affLL[1]);  // 残差
 
-        //* 残差对光度仿射a求导
-        //! 光度参数使用固定线性化点了
-        float drdA = (color[idx] - b0);
-
         if (!std::isfinite((float)hitColor[0])) {
             state_NewState = ResState::OOB;
             return state_energy;
@@ -211,10 +208,13 @@ double PointFrameResidual::linearize(CalibHessian* HCalib) {
         float w = sqrtf(setting_outlierTHSumComponent / (setting_outlierTHSumComponent + hitColor.tail<2>().squaredNorm()));
         //* 和patch位置相关的权重
         w = 0.5f * (w + weights[idx]);
-
         //* huber函数, 能量值(chi2)
         float hw = fabsf(residual) < setting_huberTH ? 1 : setting_huberTH / fabsf(residual);
         energyLeft += w * w * hw * residual * residual * (2 - hw);
+
+        //* 残差对光度仿射a求导
+        //! 光度参数使用固定线性化点了
+        float drdA = (color[idx] - b0);
 
         {
             if (hw < 1) hw = sqrtf(hw);
@@ -312,20 +312,18 @@ void PointFrameResidual::debugPlot() {
 }
 
 //@ 把计算的残差,雅克比值给EFResidual, 更新残差的状态(好坏)
-void PointFrameResidual::applyRes(bool copyJacobians) {
-    if (copyJacobians) {
-        if (state_state == ResState::OOB) {
-            assert(!efResidual->isActiveAndIsGoodNEW);
-            return;  // can never go back from OOB
-        }
-        if (state_NewState == ResState::IN)  // && )
-        {
-            efResidual->isActiveAndIsGoodNEW = true;
-            //? 指针好恶心, 计算好了调用这个函数
-            efResidual->takeDataF();  // 从当前取jacobian数据
-        } else {
-            efResidual->isActiveAndIsGoodNEW = false;
-        }
+void PointFrameResidual::applyRes() {
+    if (state_state == ResState::OOB) {
+        assert(!efResidual->isActiveAndIsGoodNEW);
+        return;  // can never go back from OOB
+    }
+    if (state_NewState == ResState::IN)  // && )
+    {
+        efResidual->isActiveAndIsGoodNEW = true;
+        //? 指针好恶心, 计算好了调用这个函数
+        efResidual->takeDataF();  // 从当前取jacobian数据
+    } else {
+        efResidual->isActiveAndIsGoodNEW = false;
     }
 
     setState(state_NewState);

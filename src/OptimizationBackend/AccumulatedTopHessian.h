@@ -54,19 +54,15 @@ class AccumulatedTopHessianSSE {
     inline void setZero(int nFrames, int min = 0, int max = 1, Vec10* stats = 0, int tid = 0) {
         //? 什么情况下不等
         if (nFrames != nframes[tid]) {
-            if (acc[tid] != 0) delete[] acc[tid];
-#if USE_XI_MODEL
-            acc[tid] = new Accumulator14[nFrames * nFrames];
-#else
+            if (acc[tid] != 0) delete[]
+                acc[tid];
             acc[tid] = new AccumulatorApprox[nFrames * nFrames];
-#endif
         }
 
         // 初始化, 设置初值
         for (int i = 0; i < nFrames * nFrames; i++) {
             acc[tid][i].initialize();
         }
-
         nframes[tid] = nFrames;
         nres[tid] = 0;
     }
