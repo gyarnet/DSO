@@ -195,13 +195,6 @@ void parseArgument(char* arg) {
         }
         return;
     }
-    if (1 == sscanf(arg, "nomt=%d", &option)) {
-        if (option == 1) {
-            multiThreading = false;
-            printf("NO MultiThreading!\n");
-        }
-        return;
-    }
     if (1 == sscanf(arg, "prefetch=%d", &option)) {
         if (option == 1) {
             prefetch = true;
@@ -294,8 +287,7 @@ void parseArgument(char* arg) {
 
 int main(int argc, char** argv) {
     // setlocale(LC_ALL, "");
-    for (int i = 1; i < argc; i++)
-        parseArgument(argv[i]);
+    for (int i = 1; i < argc; i++) parseArgument(argv[i]);
 
     // hook crtl+C.
     boost::thread exThread = boost::thread(exitThread);

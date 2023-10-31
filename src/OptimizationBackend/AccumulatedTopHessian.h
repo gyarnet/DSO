@@ -54,8 +54,7 @@ class AccumulatedTopHessianSSE {
     inline void setZero(int nFrames, int min = 0, int max = 1, Vec10* stats = 0, int tid = 0) {
         //? 什么情况下不等
         if (nFrames != nframes[tid]) {
-            if (acc[tid] != 0) delete[]
-                acc[tid];
+            if (acc[tid] != 0) delete[] acc[tid];
             acc[tid] = new AccumulatorApprox[nFrames * nFrames];
         }
 

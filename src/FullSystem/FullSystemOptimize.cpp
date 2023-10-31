@@ -125,15 +125,9 @@ Vec3 FullSystem::linearizeAll(bool fixLinearization) {
     std::vector<PointFrameResidual*> toRemove[NUM_THREADS];
     for (int i = 0; i < NUM_THREADS; i++) toRemove[i].clear();
 
-    if (multiThreading) {
-        // TODO 看多线程这个IndexThreadReduce
-        treadReduce.reduce(boost::bind(&FullSystem::linearizeAll_Reductor, this, fixLinearization, toRemove, _1, _2, _3, _4), 0, activeResiduals.size(), 0);
-        lastEnergyP = treadReduce.stats[0];
-    } else {
-        Vec10 stats;
-        linearizeAll_Reductor(fixLinearization, toRemove, 0, activeResiduals.size(), &stats, 0);
-        lastEnergyP = stats[0];
-    }
+    Vec10 stats;
+    linearizeAll_Reductor(fixLinearization, toRemove, 0, activeResiduals.size(), &stats, 0);
+    lastEnergyP = stats[0];
 
     setNewFrameEnergyTH();
 
@@ -351,8 +345,7 @@ float FullSystem::optimize(int mnumOptIts) {
         }
     }
 
-    if (!setting_debugout_runquiet)
-        printf("OPTIMIZE %d pts, %d active res, %d lin res!\n", ef->nPoints, (int)activeResiduals.size(), numLRes);
+    if (!setting_debugout_runquiet) printf("OPTIMIZE %d pts, %d active res, %d lin res!\n", ef->nPoints, (int)activeResiduals.size(), numLRes);
 
     //[ ***step 2*** ] 线性化activeResiduals的残差, 计算边缘化的能量值 (然而这里都设成0了)
     //* 线性化, 参数: [true是进行固定线性化, 并去掉不好的残差] [false不进行固定线性化]
@@ -362,10 +355,8 @@ float FullSystem::optimize(int mnumOptIts) {
     double lastEnergyM = calcMEnergy();  // HM部分的能量
 
     // 把线性化的结果给efresidual
-    if (multiThreading)
-        treadReduce.reduce(boost::bind(&FullSystem::applyRes_Reductor, this, true, _1, _2, _3, _4), 0, activeResiduals.size(), 50);
-    else
-        applyRes_Reductor(true, 0, activeResiduals.size(), 0, 0);
+
+    applyRes_Reductor(true, 0, activeResiduals.size(), 0, 0);
 
     if (!setting_debugout_runquiet) {
         printf("Initial Error       \t");
@@ -407,10 +398,8 @@ float FullSystem::optimize(int mnumOptIts) {
         //[ ***step 4*** ] 判断是否接受这次计算
         if (setting_forceAceptStep || (newEnergy[0] + newEnergy[1] + newEnergyL + newEnergyM < lastEnergy[0] + lastEnergy[1] + lastEnergyL + lastEnergyM)) {
             // 接受更新后的量
-            if (multiThreading)
-                treadReduce.reduce(boost::bind(&FullSystem::applyRes_Reductor, this, true, _1, _2, _3, _4), 0, activeResiduals.size(), 50);
-            else
-                applyRes_Reductor(true, 0, activeResiduals.size(), 0, 0);
+
+            applyRes_Reductor(true, 0, activeResiduals.size(), 0, 0);
 
             lastEnergy = newEnergy;
             lastEnergyL = newEnergyL;

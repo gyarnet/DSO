@@ -147,28 +147,20 @@ extern bool setting_fullResetRequested;
 extern bool setting_debugout_runquiet;
 
 extern bool disableAllDisplay;
-extern bool disableReconfigure;
-
 extern bool setting_onlyLogKFPoses;
 
 extern bool debugSaveImages;
 
 extern int sparsityFactor;
 extern bool goStepByStep;
-extern bool plotStereoImages;
-extern bool multiThreading;
 
 extern float freeDebugParam1;
-extern float freeDebugParam2;
 extern float freeDebugParam3;
-extern float freeDebugParam4;
 extern float freeDebugParam5;
 
 void handleKey(char k);
 
 extern int staticPattern[10][40][2];
-extern int staticPatternNum[10];
-extern int staticPatternPadding[10];
 
 //#define patternNum staticPatternNum[setting_pattern]
 //#define patternP staticPattern[setting_pattern]

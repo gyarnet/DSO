@@ -178,62 +178,40 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib) {
 
 // accumulates & shifts L.
 //@ 计算能量方程内帧点构成的 正规方程
-void EnergyFunctional::accumulateAF_MT(MatXX& H, VecX& b, bool MT) {
-    if (MT) {
-        red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_A, nFrames, _1, _2, _3, _4), 0, 0, 0);
-        red->reduce(boost::bind(&AccumulatedTopHessianSSE::addPointsInternal<0>, accSSE_top_A, &allPoints, this, _1, _2, _3, _4), 0, allPoints.size(), 50);
-        // accSSE_top_A->stitchDoubleMT(red,H,b,this,false,true);
-        accSSE_top_A->stitchDoubleMT(red, H, b, this, true, true);
-        resInA = accSSE_top_A->nres[0];
-    } else {
-        accSSE_top_A->setZero(nFrames);
-        for (EFFrame* f : frames)
-            for (EFPoint* p : f->points){
-                accSSE_top_A->addPoint<0>(p, this);  //! mode 0 增加EF点
-            }
-        // accSSE_top_A->stitchDoubleMT(red,H,b,this,false,false); // 不加先验, 得到H, b
-        accSSE_top_A->stitchDoubleMT(red, H, b, this, true, false);  // 加先验, 得到H, b
-        resInA = accSSE_top_A->nres[0];                              // 所有残差计数
-    }
+void EnergyFunctional::accumulateAF(MatXX& H, VecX& b) {
+    accSSE_top_A->setZero(nFrames);
+    for (EFFrame* f : frames)
+        for (EFPoint* p : f->points) {
+            accSSE_top_A->addPoint<0>(p, this);  //! mode 0 增加EF点
+        }
+    // accSSE_top_A->stitchDoubleMT(red,H,b,this,false,false); // 不加先验, 得到H, b
+    accSSE_top_A->stitchDoubleMT(red, H, b, this, true, false);  // 加先验, 得到H, b
+    resInA = accSSE_top_A->nres[0];                              // 所有残差计数
 }
 
 //@ 计算 H 和 b , 加先验, res是减去线性化残差
 // accumulates & shifts L.
-void EnergyFunctional::accumulateLF_MT(MatXX& H, VecX& b, bool MT) {
-    if (MT) {
-        red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_L, nFrames, _1, _2, _3, _4), 0, 0, 0);
-        red->reduce(boost::bind(&AccumulatedTopHessianSSE::addPointsInternal<1>, accSSE_top_L, &allPoints, this, _1, _2, _3, _4), 0, allPoints.size(), 50);
-        accSSE_top_L->stitchDoubleMT(red, H, b, this, true, true);
-        resInL = accSSE_top_L->nres[0];
-    } else {
-        accSSE_top_L->setZero(nFrames);
-        for (EFFrame* f : frames)
-            for (EFPoint* p : f->points)
-                accSSE_top_L->addPoint<1>(p, this);  //! mode 1
-        accSSE_top_L->stitchDoubleMT(red, H, b, this, true, false);
-        resInL = accSSE_top_L->nres[0];
-    }
+void EnergyFunctional::accumulateLF(MatXX& H, VecX& b) {
+    accSSE_top_L->setZero(nFrames);
+    for (EFFrame* f : frames)
+        for (EFPoint* p : f->points) accSSE_top_L->addPoint<1>(p, this);  //! mode 1
+    accSSE_top_L->stitchDoubleMT(red, H, b, this, true, false);
+    resInL = accSSE_top_L->nres[0];
 }
 
 //@ 计算边缘化掉逆深度的Schur complement部分
-void EnergyFunctional::accumulateSCF_MT(MatXX& H, VecX& b, bool MT) {
-    if (MT) {
-        red->reduce(boost::bind(&AccumulatedSCHessianSSE::setZero, accSSE_bot, nFrames, _1, _2, _3, _4), 0, 0, 0);
-        red->reduce(boost::bind(&AccumulatedSCHessianSSE::addPointsInternal, accSSE_bot, &allPoints, true, _1, _2, _3, _4), 0, allPoints.size(), 50);
-        accSSE_bot->stitchDoubleMT(red, H, b, this, true);
-    } else {
-        accSSE_bot->setZero(nFrames);
-        for (EFFrame* f : frames){
-            for (EFPoint* p : f->points){
-                accSSE_bot->addPoint(p, true);
-            }
+void EnergyFunctional::accumulateSCF(MatXX& H, VecX& b) {
+    accSSE_bot->setZero(nFrames);
+    for (EFFrame* f : frames) {
+        for (EFPoint* p : f->points) {
+            accSSE_bot->addPoint(p, true);
         }
-        accSSE_bot->stitchDoubleMT(red, H, b, this, false);
     }
+    accSSE_bot->stitchDoubleMT(red, H, b, this, false);
 }
 
 //@ 计算相机内参和位姿, 光度的增量
-void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT) {
+void EnergyFunctional::resubstituteF(VecX x, CalibHessian* HCalib) {
     assert(x.size() == CPARS + nFrames * 8);
 
     VecXf xF = x.cast<float>();
@@ -252,11 +230,7 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT) {
                                              xF.segment<8>(CPARS + 8 * t->idx).transpose() * adTargetF[h->idx + nFrames * t->idx];
     }
 
-    //* 计算点的逆深度增量
-    if (MT)
-        red->reduce(boost::bind(&EnergyFunctional::resubstituteFPt, this, cstep, xAd, _1, _2, _3, _4), 0, allPoints.size(), 50);
-    else
-        resubstituteFPt(cstep, xAd, 0, allPoints.size(), 0, 0);
+    resubstituteFPt(cstep, xAd, 0, allPoints.size(), 0, 0);
 
     delete[] xAd;
 }
@@ -757,18 +731,18 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     VecX bL_top, bA_top, bM_top, b_sc;
 
     //* 针对新的残差, 使用的当前残差, 没有逆深度的部分
-    accumulateAF_MT(HA_top, bA_top, multiThreading);
+    accumulateAF(HA_top, bA_top);
 
     //* 边缘化fix的残差, 有边缘化对的, 使用的res_toZeroF减去线性化部分, 加上先验, 没有逆深度的部分
     // bug: 这里根本就没有点参与了, 只有先验信息, 因为边缘化的和删除的点都不在了
     //! 这里唯一的作用就是 把 p相关的置零,算出来的没有用
-    accumulateLF_MT(HL_top, bL_top, multiThreading);  // 计算的是之前计算过得
-                                                      // p->Hdd_accLF = 0;
-                                                      // p->bd_accLF = 0;
-                                                      // p->Hcd_accLF =0 ;
+    accumulateLF(HL_top, bL_top);  // 计算的是之前计算过得
+                                   // p->Hdd_accLF = 0;
+                                   // p->bd_accLF = 0;
+                                   // p->Hcd_accLF =0 ;
 
     //* 关于逆深度的Schur部分
-    accumulateSCF_MT(H_sc, b_sc, multiThreading);
+    accumulateSCF(H_sc, b_sc);
 
     // TODO HM 和 bM是啥啊
     //* 由于固定线性化点, 每次迭代更新残差
@@ -833,8 +807,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
         //* 而这个就是阻尼加在了整个Hessian上
         //? 为什么呢, 是因为减去了零空间么  ??
-        for (int i = 0; i < 8 * nFrames + CPARS; i++)
-            HFinal_top(i, i) *= (1 + lambda);
+        for (int i = 0; i < 8 * nFrames + CPARS; i++) HFinal_top(i, i) *= (1 + lambda);
         HFinal_top -= H_sc * (1.0f / (1 + lambda));  // 因为Schur里面有个对角线的逆, 所以是倒数
     }
 
@@ -901,7 +874,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     //[ ***step 5*** ] 分别求出各个待求量的增量值
     // resubstituteF(x, HCalib);
     currentLambda = lambda;
-    resubstituteF_MT(x, HCalib, multiThreading);
+    resubstituteF(x, HCalib);
     currentLambda = 0;
 }
 

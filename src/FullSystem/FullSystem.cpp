@@ -382,7 +382,7 @@ Vec4 FullSystem::trackNewCoarse(FrameHessian* fh) {
 
         //[ ***step 3*** ] 如果跟踪正常, 并且0层残差比最好的还好留下位姿, 保存最好的每一层的能量值
         // do we have a new winner?
-        if (trackingIsGood && std::isfinite((float)coarseTracker->lastResiduals[0]) && !(coarseTracker->lastResiduals[0] >= achievedRes[0])) {
+        if (trackingIsGood && std::isfinite((float)coarseTracker->lastResiduals[0]) && coarseTracker->lastResiduals[0] < achievedRes[0]) {
             // printf("take over. minRes %f -> %f!\n", achievedRes[0], coarseTracker->lastResiduals[0]);
             flowVecs = coarseTracker->lastFlowIndicators;
             aff_g2l = aff_g2l_this;
@@ -549,9 +549,7 @@ void FullSystem::activatePointsMT() {
 
             //* 未成熟点的激活条件
             // can activate only if this is true.
-            bool canActivate = (ph->lastTraceStatus == IPS_GOOD ||
-                                ph->lastTraceStatus == IPS_SKIPPED ||
-                                ph->lastTraceStatus == IPS_BADCONDITION ||
+            bool canActivate = (ph->lastTraceStatus == IPS_GOOD || ph->lastTraceStatus == IPS_SKIPPED || ph->lastTraceStatus == IPS_BADCONDITION ||
                                 ph->lastTraceStatus == IPS_OOB) &&
                                ph->lastTracePixelInterval < 8 && ph->quality > setting_minTraceQuality && (ph->idepth_max + ph->idepth_min) > 0;
 
@@ -595,10 +593,7 @@ void FullSystem::activatePointsMT() {
     std::vector<PointHessian*> optimized;
     optimized.resize(toOptimize.size());
 
-    if (multiThreading)
-        treadReduce.reduce(boost::bind(&FullSystem::activatePointsMT_Reductor, this, &optimized, &toOptimize, _1, _2, _3, _4), 0, toOptimize.size(), 50);
-    else
-        activatePointsMT_Reductor(&optimized, &toOptimize, 0, toOptimize.size(), 0, 0);
+    activatePointsMT_Reductor(&optimized, &toOptimize, 0, toOptimize.size(), 0, 0);
 
     //[ ***step 4*** ] 把PointHessian加入到能量函数, 删除收敛的未成熟点, 或不好的点
     for (unsigned k = 0; k < toOptimize.size(); k++) {
@@ -609,8 +604,7 @@ void FullSystem::activatePointsMT() {
             newpoint->host->immaturePoints[ph->idxInImmaturePoints] = 0;
             newpoint->host->pointHessians.push_back(newpoint);
             ef->insertPoint(newpoint);                                                // 能量函数中插入点
-            for (PointFrameResidual* r : newpoint->residuals)
-                ef->insertResidual(r);  // 能量函数中插入残差
+            for (PointFrameResidual* r : newpoint->residuals) ef->insertResidual(r);  // 能量函数中插入残差
             assert(newpoint->efPoint != 0);
             delete ph;
         } else if (newpoint == (PointHessian*)((long)(-1)) || ph->lastTraceStatus == IPS_OOB) {
@@ -796,7 +790,8 @@ void FullSystem::addActiveFrame(ImageAndExposure* image, int id) {
         {
             needToMakeKF = allFrameHistory.size() == 1 || (fh->shell->timestamp - allKeyFramesHistory.back()->timestamp) > 0.95f / setting_keyframesPerSecond;
         } else {
-            Vec2 refToFh = AffLight::fromToVecExposure(coarseTracker->lastRef->ab_exposure, fh->ab_exposure, coarseTracker->lastRef_aff_g2l, fh->shell->aff_g2l);
+            Vec2 refToFh =
+                AffLight::fromToVecExposure(coarseTracker->lastRef->ab_exposure, fh->ab_exposure, coarseTracker->lastRef_aff_g2l, fh->shell->aff_g2l);
 
             // BRIGHTNESS CHECK
             needToMakeKF =
@@ -975,8 +970,7 @@ void FullSystem::makeKeyFrame(FrameHessian* fh) {
     int numFwdResAdde = 0;
     for (FrameHessian* fh1 : frameHessians)  // go through all active frames
     {
-        if (fh1 == fh)
-            continue;
+        if (fh1 == fh) continue;
         for (PointHessian* ph : fh1->pointHessians)  // 全都构造之后再删除
         {
             PointFrameResidual* r = new PointFrameResidual(ph, fh1, fh);  // 新建当前帧fh和之前帧之间的残差

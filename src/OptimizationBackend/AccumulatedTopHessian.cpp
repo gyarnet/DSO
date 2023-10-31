@@ -226,8 +226,7 @@ void AccumulatedTopHessianSSE::stitchDoubleInternal(MatXX* H, VecX* b, EnergyFun
 
         for (int tid2 = 0; tid2 < toAggregate; tid2++) {
             acc[tid2][aidx].finish();
-            if (acc[tid2][aidx].num == 0)
-                continue;
+            if (acc[tid2][aidx].num == 0) continue;
             accH += acc[tid2][aidx].H.cast<double>();  // 不同线程之间的加起来
         }
         //* 相对的量通过adj变成绝对的量, 并累加到 H, b 中
